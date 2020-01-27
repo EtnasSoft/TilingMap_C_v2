@@ -132,7 +132,7 @@ int main(void) {
         break;
       default:
         flag = 1;
-        iScrollY += 8;
+        iScrollY += 1;
         break;  
     }
 
@@ -196,7 +196,10 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
   printf("iScrollY:\t\t\t%3i\t\tbYOff:\t\t\t\t%3i\n\n", iScrollY, bYOff);
   
   printf("ty:\t\t\t\t\t%3i\t\tty1:\t\t\t\t%3i\n", ty, ty1);
-  printf("\n\n%s\n---------------------------------------\n", bYOff ? "bYOff" : "NON bYOff (Scroll block completed)");
+  
+  
+  printf("\n\n%s\n", bYOff ? "bYOff" : "NON bYOff (Scroll block completed)");
+  printf("\n\nSCREEN REPRESENTATION:\n----------------------\n");
 #endif
 
   // Rutina aqui para recargar el array "bPlayfield" con nueva fila arriba y abajo...
@@ -235,45 +238,65 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
     // Only for vertical scroll:
     //printf("\n[%d] \t", ty);
 
-    if (bYOff) {      
+    if (bYOff) {            
       for (x = 0; x < VIEWPORT_WIDTH; x++) {
         if (tx >= PLAYFIELD_COLS) {
           tx -= PLAYFIELD_COLS; // wrap around
         }
 
-        iOffset = tx + ty * PLAYFIELD_COLS;
+        
+        iOffset = tx + (ty + (EDGES / 2)) * PLAYFIELD_COLS;
         iOffset2 = iOffset + PLAYFIELD_COLS; // next line
-        if (iOffset2 >= (PLAYFIELD_ROWS * PLAYFIELD_COLS))     // past bottom
+        
+        if (iOffset2 >= (PLAYFIELD_ROWS * PLAYFIELD_COLS)) {    // past bottom        
           iOffset2 -= (PLAYFIELD_ROWS * PLAYFIELD_COLS);
-        c = bPlayfield[iOffset];
+        }
+        
+                
+        //c = bPlayfield[iOffset];        
+        
+
+        int cIndex = (iOffset + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        c = bPlayfield[cIndex];
         s = (byte *)&ucTiles[(c * MODULE) + bXOff];
-        c = bPlayfield[iOffset2];
+        
+        //c = bPlayfield[iOffset2];
+        int cIndex2 = (iOffset2 + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        c = bPlayfield[cIndex2];
         sNext = (byte *)&ucTiles[(c * MODULE) + bXOff];
+        
         DrawShiftedChar(s, sNext, d, bXOff, bYOff);
         d += (MODULE - bXOff);
         bXOff = 0;
 
         // Tiles stored by index
-        //printf("%i ", c);
+        //printf("%i ", cIndex);
 
         tx++;
       }
 
       // partial character left to draw
-      if (d != &bTemp[SCREEN_WIDTH]) {
+      // De momento no pasamos por aqui
+      /*if (d != &bTemp[SCREEN_WIDTH]) {
         bXOff = (byte)(&bTemp[SCREEN_WIDTH] - d);
-        if (tx >= PLAYFIELD_COLS)
+   
+        if (tx >= PLAYFIELD_COLS) {
           tx -= PLAYFIELD_COLS;
+        }
+        
         iOffset = tx + ty * PLAYFIELD_COLS;
         iOffset2 = iOffset + PLAYFIELD_COLS; // next line
-        if (iOffset2 >= (PLAYFIELD_ROWS * PLAYFIELD_COLS))     // past bottom
+        
+        if (iOffset2 >= (PLAYFIELD_ROWS * PLAYFIELD_COLS)) {    // past bottom
           iOffset2 -= (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        }
+        
         c = bPlayfield[iOffset];
         s = (byte *)&ucTiles[c * MODULE];
         c = bPlayfield[iOffset2];
         sNext = (byte *)&ucTiles[c * MODULE];
         DrawShiftedChar(s, sNext, d, MODULE - bXOff, bYOff);
-      }
+      }*/
     // simpler case of vertical offset of 0 for each character
     } else {
       //-----------------------------------
@@ -340,7 +363,7 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
   }
 
     
-  printf("\n\n---------------------------------------");
+  printf("\n\n\n");
 
   //PrintPlayFieldRow(1);
   //PrintScreen(ty1);  
@@ -389,7 +412,7 @@ void PrintScreen(byte ty) {
 
 void PrintRow(byte data[SCREEN_WIDTH], byte y) {
   byte i;
-  printf("\n[%i]\t", y);
+  printf("\n[%i]\t ", y);
   
   for (i = 0; i < SCREEN_WIDTH; i += MODULE ) {    
     printf("%s", data[i] == 255 ? FILL : BLANK);
@@ -404,12 +427,13 @@ void PrintPlayFieldRow(byte row) {
     iStop = iStart + PLAYFIELD_COLS;
 
   //printf("iStart: %i, iStop: %i\n", iStart, iStop);
+  printf("[%i]\t [", row);
 
   for (i = iStart; i < iStop; i++ ) {
     printf("%s", bPlayfield[i] == 1 ? FILL : BLANK);      
   }
 
-  printf("\n");
+  printf("]\n");
 }
 
 void PrintPlayField() {
