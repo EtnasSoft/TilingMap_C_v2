@@ -85,8 +85,6 @@ const char *FILL = "█";
 void cls();
 void DrawPlayfield(byte bScrollX, byte bScrollY);
 void DrawShiftedChar(byte *s1, byte *s2, byte *d, byte bXOff, byte bYOff);
-void PrintScreen(byte firstRow);
-void PrintScreenRowDetailed(byte data[SCREEN_HEIGHT * SCREEN_WIDTH]);
 void PrintDemoMessage();
 void PrintRow(byte data[SCREEN_WIDTH], byte y);
 void PrintPlayFieldRow(byte row);
@@ -114,7 +112,7 @@ int main(void) {
   }
 
   iScrollX = 0;
-  iScrollY = 0;
+  iScrollY = 1;
 
   DrawPlayfield(iScrollX, iScrollY);
   
@@ -135,7 +133,9 @@ int main(void) {
         iScrollY += 1;
         break;  
     }
-
+    
+    fflush( stdin );
+    
     if (flag) {      
       cls();
 
@@ -172,8 +172,7 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
   byte bTemp[SCREEN_WIDTH]; // holds data for the current scan line
   byte x, y, tx;
   int ty, ty1;
-  byte c, *s, *sNext, *d, bXOff, bYOff, /* MIOS -> */ sIndex;
-  
+  byte c, *s, *sNext, *d, bXOff, bYOff;  
  
   int iOffset, iOffset2;
 
@@ -185,38 +184,36 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
   ty1 = bScrollY >> 3;
 
 #ifdef DEBUG
-  printf("\nTILING MAP DEMO:\n-----------------------------------------------------\n\n");
+  printf("TILING MAP DEMO:\n-----------------------------------------------------\n\n");
   printf("PLAYFIELD_ROWS:\t\t%3i\t\tTILEMAP_HEIGHT:\t\t %i\n", PLAYFIELD_ROWS, TILEMAP_HEIGHT);
   printf("PLAYFIELD_COLS:\t\t%3i\t\tTILEMAP_WIDTH:\t\t %i\n\n", PLAYFIELD_COLS, TILEMAP_WIDTH);
   
   printf("SCREEN_HEIGHT:\t\t%3i\t\tVIEWPORT_HEIGHT:\t%3i\n", SCREEN_HEIGHT, VIEWPORT_HEIGHT);
   printf("SCREEN_WIDTH:\t\t%3i\t\tVIEWPORT_WIDTH:\t\t%3i\n\n", SCREEN_WIDTH, VIEWPORT_WIDTH);  
 
-  printf("iScrollX:\t\t\t%3i\t\tbXOff:\t\t\t\t%3i\n", iScrollX, bXOff);
-  printf("iScrollY:\t\t\t%3i\t\tbYOff:\t\t\t\t%3i\n\n", iScrollY, bYOff);
-  
-  printf("ty:\t\t\t\t\t%3i\t\tty1:\t\t\t\t%3i\n", ty, ty1);
-  
-  
-  printf("\n\n%s\n", bYOff ? "bYOff" : "NON bYOff (Scroll block completed)");
-  printf("\n\nSCREEN REPRESENTATION:\n----------------------\n");
+  printf("iScrollX:\t\t\t%3i\t\tbXOff:\t\t\t\t%3i\t\t\tty: \t%3i\n", iScrollX, bXOff, ty);
+  printf("iScrollY:\t\t\t%3i\t\tbYOff:\t\t\t\t%3i\t\t\tty1: \t%3i\n", iScrollY, bYOff, ty1);
+      
+  printf("\n%s\n", bYOff ? "bYOff Mode (step between block complete)" : "NON bYOff (Scroll block completed)");
+  printf("\nSCREEN REPRESENTATION:\n----------------------\n");
 #endif
 
   // Rutina aqui para recargar el array "bPlayfield" con nueva fila arriba y abajo...
   // static byte bPlayfield[PLAYFIELD_ROWS * PLAYFIELD_COLS];
   byte *d1;
 
+  // TODO: debug de todas estas variables para ver si se pueden bajar de tipo a byte.
   int playFieldLength = PLAYFIELD_ROWS * PLAYFIELD_COLS,
     yPos = (ty1 + VIEWPORT_HEIGHT) * PLAYFIELD_COLS,   
     cPlayfieldNextRow = (yPos % playFieldLength),   
-    cNextRow = ((ty1 + VIEWPORT_HEIGHT) % TILEMAP_HEIGHT);
+    cNextRow = ((ty1 + VIEWPORT_HEIGHT) % TILEMAP_HEIGHT),
+    cIndex, cIndex2;
   
   d1 = &bPlayfield[cPlayfieldNextRow];
 
   for (byte x1 = 0; x1 < PLAYFIELD_COLS; x1++) {
     memcpy(d1 + x1, &tileMap[cNextRow][x1], 1);        
   }
-
 
   // -----------------------------------------
 
@@ -243,28 +240,43 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
         if (tx >= PLAYFIELD_COLS) {
           tx -= PLAYFIELD_COLS; // wrap around
         }
-
         
         iOffset = tx + (ty + (EDGES / 2)) * PLAYFIELD_COLS;
         iOffset2 = iOffset + PLAYFIELD_COLS; // next line
         
         if (iOffset2 >= (PLAYFIELD_ROWS * PLAYFIELD_COLS)) {    // past bottom        
           iOffset2 -= (PLAYFIELD_ROWS * PLAYFIELD_COLS);
-        }
-        
+        }        
                 
-        //c = bPlayfield[iOffset];        
-        
+        //c = bPlayfield[iOffset];
 
-        int cIndex = (iOffset + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        cIndex = (iOffset + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
         c = bPlayfield[cIndex];
         s = (byte *)&ucTiles[(c * MODULE) + bXOff];
         
         //c = bPlayfield[iOffset2];
-        int cIndex2 = (iOffset2 + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
-        c = bPlayfield[cIndex2];
+        // Este segundo indice debería irse siempre al tilemap, no al playfield...
+        //int cIndex2 = (iOffset2 + 1/*(EDGES / 2)*/) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        //c = bPlayfield[cIndex2];
+        
+        // Esto parece que funciona, pero hay que estudiarlo. Tambien parece que condena el codigo 
+        // a un tilemap, que no se hasta que punto se ha cohesionado. 
+        cIndex2 = (ty1 + y + (EDGES / 2)) % TILEMAP_HEIGHT; //current row + current Y scan + 1 (index 0)
+        c = tileMap[cIndex2][x + (EDGES / 2)];
+                
+        // sNext es el byte de esta posición pero de la proxima fila (row)
         sNext = (byte *)&ucTiles[(c * MODULE) + bXOff];
         
+        //sNext = (byte *)&ucTiles[8]; // ESTO FUNCIONA PERO NO TIENE SENTIDO...        
+        
+        //printf("\ntx: %i, ty: %i, iOffset: %i, iOffset2: %i", tx, ty, iOffset, iOffset2);
+
+        /*printf("\ncIndex: %03i, cIndex2: %03i, index2:%03i, s: %03i, sNext: %03i, d: %03i, bXOff: %i, bYOff: %i",
+        cIndex, cIndex2, (iOffset2 + (EDGES / 2)), *s, *sNext, *d, bXOff, bYOff);*/
+        
+        /*printf("\ntx: %i, ty: %i, index2: %03i, iOffset2: %03i, cIndex2: %03i, sNext: %i", 
+          tx, (ty1+y), iOffset2 + (EDGES / 2), iOffset2, cIndex2, *sNext);*/
+
         DrawShiftedChar(s, sNext, d, bXOff, bYOff);
         d += (MODULE - bXOff);
         bXOff = 0;
@@ -277,7 +289,7 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
 
       // partial character left to draw
       // De momento no pasamos por aqui
-      /*if (d != &bTemp[SCREEN_WIDTH]) {
+      /*if (d != &bTemp[SCREEN_WIDTH]) {       
         bXOff = (byte)(&bTemp[SCREEN_WIDTH] - d);
    
         if (tx >= PLAYFIELD_COLS) {
@@ -308,28 +320,24 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
         if (tx >= PLAYFIELD_COLS) {
           tx -= PLAYFIELD_COLS;
         }
-
-        //iOffset = tx + (ty * PLAYFIELD_COLS); // Next tile index to draw
+        
         iOffset = tx + ((ty + (EDGES / 2)) * PLAYFIELD_COLS); // Next tile index to draw
-        
-        
-        //c = bPlayfield[iOffset + (EDGES / 2)]; // Primer byte util del playfield despues de aplicar el offset.
-        int cIndex = (iOffset + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
-        c = bPlayfield[cIndex];     
-        sIndex = (c * MODULE) + bXOff;
-        s = (byte *)&ucTiles[sIndex]; // Primer bit de tileMap necesario
-        memcpy(d, s, MODULE - bXOff); // El tercer parametro indica cuantos bits copiamos desde "s"
+        cIndex = (iOffset + (EDGES / 2)) % (PLAYFIELD_ROWS * PLAYFIELD_COLS);
+        c = bPlayfield[cIndex];        
+        s = (byte *)&ucTiles[(c * MODULE) + bXOff]; // Primer bit de tileMap necesario
+        memcpy(d, s, MODULE - bXOff);
         d += (MODULE - bXOff); // D is current ROW
         bXOff = 0;
         tx++;
         
-        //printf("sIndex: %i\n", sIndex);      
+        
         //printf("bXOff: %i\n", bXOff);
         // Tiles stored by index
         //printf("%s ", *s == 255 ? FILL : BLANK);
       }    
 
       //printf("\n");
+      
       // partial character left to draw
       // De momento el codigo no pasa por aqui.
       /*if (d != &bTemp[SCREEN_WIDTH]) {
@@ -375,48 +383,12 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
 
 // DEMO ROUTINES
 // ------------------------------------------------------------------
-void PrintScreenRowDetailed(byte data[SCREEN_HEIGHT * SCREEN_WIDTH]) {
-    printf("\n\nSCREEN REPRESENTATION:\n-----------------\n");
-    for (int x = 0; x < SCREEN_HEIGHT * SCREEN_WIDTH; x++) {
-      printf("%03i ", data[x]);
-      
-      // Col separation (each byte)
-      if (x > 0 && ((x+1) % MODULE == 0)) {
-        printf("\n");
-      }
-
-      // Row separation (each row)
-      if (x > 0 && ((x + 1) % (PLAYFIELD_COLS * MODULE) == 0)) {
-        printf("\n");
-      }
-    }    
-}
-
-void PrintScreen(byte ty) {  
-  int i,
-    dataLength = PLAYFIELD_COLS * PLAYFIELD_ROWS,
-    iStart = ty * VIEWPORT_WIDTH;
-    
-  printf("\n\nSCREEN REPRESENTATION:\n----------------------\n\n");
-    
-  for (i = iStart; i < iStart + dataLength; i++ ) {
-    printf("%s ", bPlayfield[i % dataLength] == 1 ? FILL : BLANK);
-    if (!((i + 1) % 16)) {
-      printf("\n");
-    }   
-  }
-  
-  printf("\n\niStart: %i, iStop: %i\n", iStart, iStart + dataLength);
-  printf("TOTAL BYTES: %i\n\n\n", i);
-}
-
 void PrintRow(byte data[SCREEN_WIDTH], byte y) {
   byte i;
   printf("\n[%i]\t ", y);
   
   for (i = 0; i < SCREEN_WIDTH; i += MODULE ) {    
     printf("%s", data[i] == 255 ? FILL : BLANK);
-
   }  
 }
 
@@ -439,7 +411,8 @@ void PrintPlayFieldRow(byte row) {
 void PrintPlayField() {
   byte i;
 
-  printf("\n\nPLAYFIELD VISUALIZATION:\n------------------------\n\n");  
+  printf("PLAYFIELD VISUALIZATION (%i bytes):\n------------------------------------\n\n", 
+    PLAYFIELD_COLS * PLAYFIELD_ROWS);  
 
   for (i = 0; i < PLAYFIELD_ROWS; i++) {
     PrintPlayFieldRow(i);
@@ -451,7 +424,7 @@ void PrintPlayField() {
 void PrintDemoMessage() {
   printf("╔═══════════════════════════════════════════════════════════════════╗\n");
   printf("║ Press \"+\" or \"-\" + ENTER to increase or decrease the AXIS Y value ║\n");
-  printf("╚═══════════════════════════════════════════════════════════════════╝\n");
+  printf("╚═══════════════════════════════════════════════════════════════════╝");
 }
 
 void cls() {    
