@@ -70,7 +70,7 @@ const byte tileMap[TILEMAP_HEIGHT][TILEMAP_WIDTH] = {
   {0,  1,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0},
   {0,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0},
   {0,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0},
-  {0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  0},
+  {0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0},
 };
 
 static byte bPlayfield[PLAYFIELD_ROWS * PLAYFIELD_COLS];
@@ -190,7 +190,8 @@ void DrawPlayfield(int bScrollX, int bScrollY) {
   printf("SCREEN_HEIGHT:\t\t%3i\t\tVIEWPORT_HEIGHT:\t%3i\n", SCREEN_HEIGHT, VIEWPORT_HEIGHT);
   printf("SCREEN_WIDTH:\t\t%3i\t\tVIEWPORT_WIDTH:\t\t%3i\n\n", SCREEN_WIDTH, VIEWPORT_WIDTH);  
 
-  printf("iScrollX:\t\t\t%3i\t\tbXOff:\t\t\t\t%3i\t\t\tty: \t%3i\n", iScrollX, bXOff, ty);
+  printf("iScrollX:\t\t\t%3i\t\tbXOff:\t\t\t\t%3i\t\t\tty: \t%3i\n", 
+  iScrollX, bXOff, (ty >= PLAYFIELD_COLS ? ty - PLAYFIELD_COLS : ty));
   printf("iScrollY:\t\t\t%3i\t\tbYOff:\t\t\t\t%3i\t\t\tty1: \t%3i\n", iScrollY, bYOff, ty1);
       
   printf("\n%s\n", bYOff ? "bYOff Mode (step between block complete)" : "NON bYOff (Scroll block completed)");
@@ -203,15 +204,15 @@ void DrawPlayfield(int bScrollX, int bScrollY) {
 
   // TODO: debug de todas estas variables para ver si se pueden bajar de tipo a byte.
   int playFieldLength = PLAYFIELD_ROWS * PLAYFIELD_COLS,
-    yPos = (ty1 + VIEWPORT_HEIGHT) * PLAYFIELD_COLS + PLAYFIELD_COLS,
-    cPlayfieldNextRow = (yPos % playFieldLength),
+    nextPlayfieldBit = (ty1 + VIEWPORT_HEIGHT + 1) * PLAYFIELD_COLS,    
+    cNextPlayfieldBit = (nextPlayfieldBit % playFieldLength),
     cNextRow = ((ty1 + VIEWPORT_HEIGHT + 1) % TILEMAP_HEIGHT),
     cIndex, cIndex2;
 
-  d1 = &bPlayfield[cPlayfieldNextRow];
+  d1 = &bPlayfield[cNextPlayfieldBit];
   
   for (byte x1 = 0; x1 < PLAYFIELD_COLS; x1++) {
-    //printf("d1: %i, d1x1: %i, cNextRow: %i\n", *d1, (*d1+x1), cNextRow);
+    printf("d1: %i, d1x1: %i, cNextRow: %i\n", *d1, (*d1+x1), cNextRow);
     memcpy(d1 + x1, &tileMap[cNextRow][x1], 1);
   }
 
