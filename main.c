@@ -15,7 +15,6 @@ typedef uint8_t byte;
 #define INCREASE 43 // ASCII CODE for +
 #define DECREASE 45 // ASCII CODE for -
 
-
 // Screen resolution 128x64px
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -83,7 +82,7 @@ const char *FILL = "█";
 // PROTOTYPES
 // ------------------------------------------------------------------
 void cls();
-void DrawPlayfield(byte bScrollX, byte bScrollY);
+void DrawPlayfield(int bScrollX, int bScrollY);
 void DrawShiftedChar(byte *s1, byte *s2, byte *d, byte bXOff, byte bYOff);
 void PrintDemoMessage();
 void PrintRow(byte data[SCREEN_WIDTH], byte y);
@@ -100,19 +99,19 @@ int main(void) {
     flag = 0;
   
   byte x, y, *d;
+  
+  iScrollX = 0;
+  iScrollY = 0;
 
-
-  // Storing tyles
+  // Storing tyles according to initial iScroll
+  int iStart = iScrollY >> 3;
   for (y = 0; y < PLAYFIELD_ROWS; y++) {
     d = &bPlayfield[y * PLAYFIELD_COLS];
 
     for (x = 0; x < PLAYFIELD_COLS; x++) {
-      memcpy(d++, &tileMap[y][x], 1);
+      memcpy(d++, &tileMap[(iStart + y) % TILEMAP_HEIGHT][x], 1);
     }
   }
-
-  iScrollX = 0;
-  iScrollY = 1;
 
   DrawPlayfield(iScrollX, iScrollY);
   
@@ -143,7 +142,7 @@ int main(void) {
       iScrollX = (iScrollX >= PLAYFIELD_COLS * MODULE) ? 0 : 
         (iScrollX < 0) ? ((PLAYFIELD_COLS * MODULE) - 1) : iScrollX;
       
-      iScrollY = (iScrollY >= (TILEMAP_HEIGHT * MODULE)) ? 0 :
+      iScrollY = (iScrollY >= 240) ? 0 :
         (iScrollY < 0) ? ((TILEMAP_HEIGHT * MODULE) - 1) : iScrollY;
       
       DrawPlayfield(iScrollX, iScrollY);
@@ -168,7 +167,7 @@ void DrawShiftedChar(byte *s1, byte *s2, byte *d, byte bXOff, byte bYOff) {
   }
 }
 
-void DrawPlayfield(byte bScrollX, byte bScrollY) {
+void DrawPlayfield(int bScrollX, int bScrollY) {
   byte bTemp[SCREEN_WIDTH]; // holds data for the current scan line
   byte x, y, tx;
   int ty, ty1;
@@ -204,15 +203,16 @@ void DrawPlayfield(byte bScrollX, byte bScrollY) {
 
   // TODO: debug de todas estas variables para ver si se pueden bajar de tipo a byte.
   int playFieldLength = PLAYFIELD_ROWS * PLAYFIELD_COLS,
-    yPos = (ty1 + VIEWPORT_HEIGHT) * PLAYFIELD_COLS,   
-    cPlayfieldNextRow = (yPos % playFieldLength),   
-    cNextRow = ((ty1 + VIEWPORT_HEIGHT) % TILEMAP_HEIGHT),
+    yPos = (ty1 + VIEWPORT_HEIGHT) * PLAYFIELD_COLS + PLAYFIELD_COLS,
+    cPlayfieldNextRow = (yPos % playFieldLength),
+    cNextRow = ((ty1 + VIEWPORT_HEIGHT + 1) % TILEMAP_HEIGHT),
     cIndex, cIndex2;
-  
-  d1 = &bPlayfield[cPlayfieldNextRow];
 
+  d1 = &bPlayfield[cPlayfieldNextRow];
+  
   for (byte x1 = 0; x1 < PLAYFIELD_COLS; x1++) {
-    memcpy(d1 + x1, &tileMap[cNextRow][x1], 1);        
+    //printf("d1: %i, d1x1: %i, cNextRow: %i\n", *d1, (*d1+x1), cNextRow);
+    memcpy(d1 + x1, &tileMap[cNextRow][x1], 1);
   }
 
   // -----------------------------------------
@@ -428,7 +428,7 @@ void PrintDemoMessage() {
 }
 
 void cls() {    
-    system("@cls||clear");
+    system("clear");
 }
 
 
