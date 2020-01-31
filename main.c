@@ -95,6 +95,7 @@ void PrintPlayField();
 // ------------------------------------------------------------------
 int main(void) {
   cls();
+  c_textcolor(11); // Light cyan color :)
 
   // Demo purposes
   int c,
@@ -103,13 +104,16 @@ int main(void) {
   byte x, y, *d;
   
   iScrollX = 0;
-  iScrollY = 0;
+  iScrollY = 232;
 
   // Storing tyles according to initial iScroll
-  int iStart = iScrollY >> 3;
-  for (y = 0; y < PLAYFIELD_ROWS; y++) {
-    d = &bPlayfield[y * PLAYFIELD_COLS];
+  byte bitStart, 
+    iStart = iScrollY >> 3;
 
+  for (y = 0; y < PLAYFIELD_ROWS; y++) {    
+    bitStart = ((iStart + y) * PLAYFIELD_COLS) % (PLAYFIELD_COLS * PLAYFIELD_ROWS);
+    d = &bPlayfield[bitStart];
+    
     for (x = 0; x < PLAYFIELD_COLS; x++) {
       memcpy(d++, &tileMap[(iStart + y) % TILEMAP_HEIGHT][x], 1);
     }
@@ -170,9 +174,7 @@ int main(void) {
 
 void DrawShiftedChar(byte *s1, byte *s2, byte *d, byte bXOff, byte bYOff) {
   byte c, c2, z;  
-  // s1 -> ucTiles
-  // s2 -> ucTiles
-
+ 
   for (z = 0; z < (8 - bXOff); z++) {
     c = *s1++;//pgm_read_byte(s1++);
     c >>= bYOff; // shift over
@@ -230,7 +232,6 @@ void DrawPlayfield(int bScrollX, int bScrollY) {
 
   // -----------------------------------------
 
-
   // draw the 8 rows
   for (y = 0; y < VIEWPORT_HEIGHT; y++) {
     memset(bTemp, 0, sizeof(bTemp));
@@ -243,7 +244,6 @@ void DrawPlayfield(int bScrollX, int bScrollY) {
 
     // Draw the playfield characters at the given scroll position
     d = bTemp;
-
     
     if (bYOff) {            
       for (x = 0; x < VIEWPORT_WIDTH; x++) {
@@ -378,13 +378,21 @@ void PrintPlayFieldRow(byte row) {
   int i,
     dataLength = PLAYFIELD_COLS * PLAYFIELD_ROWS,
     iStart = row * PLAYFIELD_COLS,
-    iStop = iStart + PLAYFIELD_COLS;
+    iStop = iStart + PLAYFIELD_COLS,
+    color = 1;
 
   //printf("iStart: %i, iStop: %i\n", iStart, iStop);
   printf("[%i]\t [", row);
 
-  for (i = iStart; i < iStop; i++ ) {
-    printf("%s", bPlayfield[i] == 1 ? FILL : BLANK);      
+  for (i = iStart; i < iStop; i++ ) {    
+    if (bPlayfield[i] == 1) {
+      c_textcolor(color++ & 3);
+      printf("%s", FILL);
+    } else {
+      c_textcolor(11);
+      printf("%s", BLANK);
+    }
+    //printf("%s", bPlayfield[i] == 1 ? FILL : BLANK);      
   }
 
   printf("]\n");
@@ -404,7 +412,9 @@ void PrintPlayField() {
 }
 
 void PrintDemoMessage() {
-  printf("╔═══════════════════════════════════════════════════════════════════╗\n");
+  c_setcursortype(0);
+    
+  printf("╔═══════════════════════════════════════════════════════════════════╗\n");  
   printf("║ Press the arrow keys to scroll the screen                         ║\n");
   printf("╚═══════════════════════════════════════════════════════════════════╝");
 }
